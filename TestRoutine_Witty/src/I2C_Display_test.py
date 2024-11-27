@@ -42,3 +42,5 @@ if __name__ == "__main__":
     lcd.clear()
     lcd.write("Hello World!", 0)
     lcd.write("Line 2 Test", 1)
+
+##This script correctly initializes the Grove LCD display and writes two lines of text to it.
