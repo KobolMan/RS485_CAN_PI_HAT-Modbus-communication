@@ -27,11 +27,11 @@ class GroveLCD:
         self.send_command(0x01)
         time.sleep(0.002)
     
-    def write(self, text, line=0):
+    def write(self, text, line=0, start_col=0):
         if line == 0:
-            self.send_command(0x80)
+            self.send_command(0x80 + start_col)
         else:
-            self.send_command(0xC0)
+            self.send_command(0xC0 + start_col)
         
         for char in text:
             self.send_data(char)
@@ -40,7 +40,7 @@ class GroveLCD:
 if __name__ == "__main__":
     lcd = GroveLCD()
     lcd.clear()
-    lcd.write("Hello World!", 0)
-    lcd.write("Line 2 Test", 1)
+    lcd.write("WittyC Testboard", 0)
+    lcd.write("Faradex srl", 1, start_col=16 - len("Faradex srl"))
 
-##This script correctly initializes the Grove LCD display and writes two lines of text to it.
+    ##This script enables the use of the I2C grove LCD display. Note: connected on SDA1 SCL1 pins on PI_GPIO HAT.
