@@ -15,7 +15,7 @@ if os.path.exists(libdir):
     sys.path.append(libdir)
 
 logger = logging.getLogger(__name__)
-from waveshare_2_CH_RS485_HAT import config
+#from waveshare_2_CH_RS485_HAT import config
 
 class RS485Base:
     """Base class for RS485 communication"""
@@ -242,4 +242,4 @@ def main():
 if __name__ == "__main__":
     main()
 
-#This library provides a simple interface for controlling DAC and ADC channels using RS485 communication.
+#This library provides an HL abstraction interface for controlling DAC and ADC channels using RS485 communication.
