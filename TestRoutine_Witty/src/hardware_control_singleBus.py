@@ -15,29 +15,21 @@ if os.path.exists(libdir):
     sys.path.append(libdir)
 
 logger = logging.getLogger(__name__)
-#from waveshare_2_CH_RS485_HAT import config
 
 class RS485Base:
-    """Base class for RS485 communication"""
-    
-    def __init__(self, port: str = "/dev/ttySC0", baudrate: int = 9600, 
-                 txden_pin: int = 27, slave_address: int = 0x01):
-        """Initialize RS485 base communication."""
+    def __init__(self, port: str = "/dev/ttySC0", baudrate: int = 9600, txden_pin: int = 27):
         self.port = port
         self.baudrate = baudrate
         self.txden_pin = txden_pin
-        self.slave_address = slave_address
         self._setup_gpio()
         self._setup_serial()
         
     def _setup_gpio(self) -> None:
-        """Setup GPIO configuration"""
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(self.txden_pin, GPIO.OUT)
         GPIO.output(self.txden_pin, GPIO.HIGH)
         
     def _setup_serial(self) -> None:
-        """Setup serial communication"""
         try:
             from waveshare_2_CH_RS485_HAT import config
             self.ser = config.config(dev=self.port, Baudrate=self.baudrate).serial
@@ -47,16 +39,15 @@ class RS485Base:
             raise
 
     def send_command(self, command: bytes) -> Optional[bytearray]:
-        """Send command over RS485 and get response."""
         try:
-            GPIO.output(self.txden_pin, GPIO.LOW)  # Enable transmitter
+            GPIO.output(self.txden_pin, GPIO.LOW)
             time.sleep(0.01)
             
             self.ser.write(command)
             logger.debug(f"Sent: {' '.join(f'{b:02X}' for b in command)}")
             
             time.sleep(0.01)
-            GPIO.output(self.txden_pin, GPIO.HIGH)  # Disable transmitter
+            GPIO.output(self.txden_pin, GPIO.HIGH)
             time.sleep(0.05)
             
             response = bytearray()
@@ -79,8 +70,8 @@ class RS485Base:
             logger.error(f"Error in send_command: {e}")
             return None
 
-    def calculate_crc(self, data: List[int]) -> int:
-        """Calculate Modbus CRC16"""
+    @staticmethod
+    def calculate_crc(data: List[int]) -> int:
         crc = 0xFFFF
         for pos in data:
             crc ^= pos
@@ -93,16 +84,16 @@ class RS485Base:
         return crc
 
     def close(self) -> None:
-        """Clean up resources"""
         self.ser.close()
         GPIO.cleanup()
         logger.info("Closed RS485 device")
 
-class DACController(RS485Base):
-    """Class for controlling DAC channels"""
+class DACController:
+    def __init__(self, rs485: RS485Base, slave_address: int = 0x01):
+        self.rs485 = rs485
+        self.slave_address = slave_address
     
     def set_voltage(self, channel: int, voltage_mv: int) -> Optional[bytearray]:
-        """Set voltage for a DAC channel."""
         if not 1 <= channel <= 8:
             logger.error(f"Invalid DAC channel: {channel}")
             return None
@@ -124,10 +115,10 @@ class DACController(RS485Base):
             low_byte
         ]
         
-        crc = self.calculate_crc(command)
+        crc = self.rs485.calculate_crc(command)
         command.extend([crc & 0xFF, (crc >> 8) & 0xFF])
         
-        response = self.send_command(bytes(command))
+        response = self.rs485.send_command(bytes(command))
         
         if self._validate_dac_response(response, channel, voltage_mv):
             return response
@@ -135,26 +126,22 @@ class DACController(RS485Base):
         
     def _validate_dac_response(self, response: Optional[bytearray], 
                              channel: int, voltage_mv: int) -> bool:
-        """Validate DAC response"""
         if response and len(response) >= 8:
             if response[0] == self.slave_address and response[1] == 0x06:
                 logger.info(f"Set DAC Channel {channel} to {voltage_mv/1000.0:.3f}V")
                 return True
         return False
 
-class ADCController(RS485Base):
-    """Class for controlling ADC channels"""
-    
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+class ADCController:
+    def __init__(self, rs485: RS485Base, slave_address: int = 0x02):
+        self.rs485 = rs485
+        self.slave_address = slave_address
         self._initialize_channels()
     
     def _initialize_channels(self) -> None:
-        """Initialize ADC channels with default configuration"""
         self.set_data_type(channel=1, data_type=0x0000)
     
     def set_data_type(self, channel: int, data_type: int) -> Optional[bytearray]:
-        """Set ADC channel data type"""
         register_address = 0x1000 + (channel - 1)
         high_addr = (register_address >> 8) & 0xFF
         low_addr = register_address & 0xFF
@@ -163,13 +150,12 @@ class ADCController(RS485Base):
         low_data = data_type & 0xFF
         
         command = [self.slave_address, 0x06, high_addr, low_addr, high_data, low_data]
-        crc = self.calculate_crc(command)
+        crc = self.rs485.calculate_crc(command)
         command.extend([crc & 0xFF, (crc >> 8) & 0xFF])
         
-        return self.send_command(bytes(command))
+        return self.rs485.send_command(bytes(command))
     
     def read_voltage(self, channel: int) -> Optional[float]:
-        """Read voltage from ADC channel."""
         register_address = channel - 1
         high_addr = (register_address >> 8) & 0xFF
         low_addr = register_address & 0xFF
@@ -183,15 +169,14 @@ class ADCController(RS485Base):
             0x01
         ]
         
-        crc = self.calculate_crc(command)
+        crc = self.rs485.calculate_crc(command)
         command.extend([crc & 0xFF, (crc >> 8) & 0xFF])
         
-        response = self.send_command(bytes(command))
+        response = self.rs485.send_command(bytes(command))
         return self._process_adc_response(response, channel)
     
     def _process_adc_response(self, response: Optional[bytearray], 
                             channel: int) -> Optional[float]:
-        """Process and validate ADC response"""
         if response and len(response) >= 7:
             if response[0] == self.slave_address and response[1] == 0x04:
                 if response[2] == 2:
@@ -202,31 +187,23 @@ class ADCController(RS485Base):
         return None
 
 class HardwareControl:
-    """Main hardware control class"""
-    
     def __init__(self, port: str = "/dev/ttySC0", baudrate: int = 9600, 
                  txden_pin: int = 27):
-        self.dac = DACController(port=port, baudrate=baudrate, 
-                               txden_pin=txden_pin, slave_address=0x01)
-        self.adc = ADCController(port=port, baudrate=baudrate, 
-                               txden_pin=txden_pin, slave_address=0x02)
+        self.rs485 = RS485Base(port=port, baudrate=baudrate, txden_pin=txden_pin)
+        self.dac = DACController(rs485=self.rs485, slave_address=0x01)
+        self.adc = ADCController(rs485=self.rs485, slave_address=0x02)
     
     def close(self) -> None:
-        """Close all connections"""
-        self.dac.close()
-        self.adc.close()
+        self.rs485.close()
 
 def main():
-    """Main function for testing"""
     try:
         hardware = HardwareControl()
         
-        # Test DAC channels
         print("\nSetting voltages on DAC channels...")
         hardware.dac.set_voltage(channel=1, voltage_mv=5000)  # 5V
         hardware.dac.set_voltage(channel=2, voltage_mv=3000)  # 3V
         
-        # Test ADC channels
         print("\nReading voltages from ADC channels...")
         hardware.adc.read_voltage(channel=1)
         hardware.adc.read_voltage(channel=2)
@@ -242,4 +219,4 @@ def main():
 if __name__ == "__main__":
     main()
 
-#This library provides an HL abstraction interface for controlling DAC and ADC channels using RS485 communication.
+#This script offers an HAL for the RS485 HAT, which can be used to control the DAC and ADC channels when connected to a single RS485 bus. Note: DAC slave addrs = 0x01, ADC slave addrs = 0x02
