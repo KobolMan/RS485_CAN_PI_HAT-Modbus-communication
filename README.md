@@ -8,7 +8,8 @@ A comprehensive test suite for WittyC board validation using Raspberry Pi 4B and
 - [Waveshare RS485 CAN HAT (B)](https://www.waveshare.com/product/rs485-can-hat-b.htm)
 - [Waveshare Modbus RTU 8CH Analog Output (B)](https://www.waveshare.com/modbus-rtu-analog-output-8ch.htm)
 - [Waveshare Modbus RTU 8CH Analog Input (B)](https://www.waveshare.com/modbus-rtu-analog-input-8ch.htm)
-- WittyC board
+- WittyC board rev 1.4
+  ![WittyC_TestBard rev 1.4](WittyC_TestBoard-rev14.png)
 
 ## Project Structure
 
