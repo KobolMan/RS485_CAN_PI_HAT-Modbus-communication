@@ -219,4 +219,4 @@ def main():
 if __name__ == "__main__":
     main()
 
-#This script offers an HAL for the RS485 HAT, which can be used to control the DAC and ADC channels when connected to a single RS485 bus. Note: DAC slave addrs = 0x01, ADC slave addrs = 0x02
+#This script offers an HL for the RS485 HAT, which can be used to control the DAC and ADC channels when connected to a single RS485 bus. Note: DAC slave addrs = 0x01, ADC slave addrs = 0x02
