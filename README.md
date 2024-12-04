@@ -9,11 +9,7 @@ A comprehensive test suite for WittyC board validation using Raspberry Pi 4B and
 - [Waveshare Modbus RTU 8CH Analog Output (B)](https://www.waveshare.com/modbus-rtu-analog-output-8ch.htm)
 - [Waveshare Modbus RTU 8CH Analog Input (B)](https://www.waveshare.com/modbus-rtu-analog-input-8ch.htm)
 - WittyC board rev 1.4
-<<<<<<< HEAD
 ![WittyC_TestBoard rev 1.4](WittyC_TestBoard-rev14.png)
-=======
-
->>>>>>> 84e596e (Updated readme)
 ## Project Structure
 
 ### Main Scripts
