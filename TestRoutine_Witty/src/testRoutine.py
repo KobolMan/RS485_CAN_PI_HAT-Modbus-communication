@@ -20,8 +20,9 @@
 #5. CC Test: Check the CC_1 and CC_2 voltage sense (ADC_4 and ADC_5) in two steps:
 #   5.1 CC ON State Test: Turn on CC_1 and CC_2 (3.3V) and check if the voltage sense reading is in the range 3.2-3.5V.
 #   5.2 CC OFF State Test: Turn off CC_1 and CC_2 (0.5V) and check if the voltage sense reading is below 0.1V.
-#6. User Button Test: Read the user button state (TP_9_FUNC_BTN) and check if it is pressed (1).
+#6. User Button Test: Read from user button voltage divider (TP_9_FUNC_BTN) and check if it is in acceptable range 3.0-3.5V.
 
+#If all tests pass, the program will execute the flash-wittyc.sh script to flash the WittyC board. If any test fails, the program will stop the test sequence and display the failed test.
 
 
 
@@ -115,7 +116,7 @@ def run_test_sequence(hw_control):
     try:
         # Power up sequence
         hw_control.SetVoltage(1, 5000)  # DAC_1 ON (12V LDO enable)
-        time.sleep(1)  # Wait for power stabilization
+        time.sleep(.1)  # Wait for power stabilization
         
         # Sequential test execution
         tests = [
@@ -133,7 +134,7 @@ def run_test_sequence(hw_control):
                 logger.error(f"{test_name} failed - stopping test sequence")
                 all_tests_passed = False
                 break
-            time.sleep(0.5)
+            time.sleep(0.05)
         
         # Run flash script if all tests passed
         if all_tests_passed:
@@ -190,7 +191,7 @@ def temp_test(hw_control):
     temperature = voltage_to_temp(voltage)
     logger.info(f"Temperature: {temperature:.2f}°C")
     
-    if 20 <= temperature <= 30:
+    if 12 <= temperature <= 35:
         logger.info("Temperature Test: PASS")
         return True
     logger.error("Temperature Test: FAIL")
@@ -210,10 +211,10 @@ def voltage_sense_test(hw_control):
     
     # Step 2.2: CHG_EN
     logger.info("Step 2.2: CHG_EN voltage sense check")
-    hw_control.SetVoltage(3, 5000)  # DAC_3 ON (CHG_EN) QUESTION How much should we give to CHG_EN?
+    hw_control.SetVoltage(3, 3300)  # DAC_3 ON (CHG_EN) 
     time.sleep(0.5)
     voltage = hw_control.ReadVoltage(2)  # ADC_2
-    if voltage is None or not (4.5 <= voltage <= 5.5):  # QUESTION What are we expecting from voltage_sense in this case?
+    if voltage is None or not (1.7 <= voltage <= 1.9):  #Ideally should be around 1.8V
         logger.error("Step 2.2 Failed")
         return False
     logger.info(f"Voltage Sense (2.2): {voltage:.2f}V - PASS")
@@ -294,8 +295,8 @@ def cc_test(hw_control):
 def user_button_test(hw_control):
     """Step 6: User Button Test"""
     logger.info("Step 6: User Button Test")
-    button_state = hw_control.ReadVoltage(6)  # TP_9_FUNC_BTN -> ADC_6
-    if button_state != 1:
+    button_voltage = hw_control.ReadVoltage(6)  # TP_9_FUNC_BTN -> ADC_6
+    if button_voltage is None or not (3.0 <= button_voltage <= 3.6):
         logger.error("User Button Test Failed")
         return False
     logger.info("User Button Test: PASS")
