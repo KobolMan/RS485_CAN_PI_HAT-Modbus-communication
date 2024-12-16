@@ -5,7 +5,7 @@ A comprehensive test suite for WittyC board validation using Raspberry Pi 4B and
 ## Hardware Requirements
 
 - Raspberry Pi 4B
-- [DFROBOT GPIO](https://www.waveshare.com/product/rs485-can-hat-b.htm](https://wiki.dfrobot.com/SKU_DFR0918_Raspberry_Pi_GPIO_Terminal_Block_HAT)
+- [DFROBOT GPIO](https://wiki.dfrobot.com/SKU_DFR0918_Raspberry_Pi_GPIO_Terminal_Block_HAT)
 - [Waveshare RS485 CAN HAT (B)](https://www.waveshare.com/product/rs485-can-hat-b.htm)
 - [Waveshare Modbus RTU 8CH Analog Output (B)](https://www.waveshare.com/modbus-rtu-analog-output-8ch.htm)
 - [Waveshare Modbus RTU 8CH Analog Input (B)](https://www.waveshare.com/modbus-rtu-analog-input-8ch.htm)
