@@ -5,12 +5,17 @@ A comprehensive test suite for WittyC board validation using Raspberry Pi 4B and
 ## Hardware Requirements
 
 - Raspberry Pi 4B
-- [DFROBOT GPIO]([https://www.waveshare.com/product/rs485-can-hat-b.htm](https://wiki.dfrobot.com/SKU_DFR0918_Raspberry_Pi_GPIO_Terminal_Block_HAT))
+- [DFROBOT GPIO](https://www.waveshare.com/product/rs485-can-hat-b.htm](https://wiki.dfrobot.com/SKU_DFR0918_Raspberry_Pi_GPIO_Terminal_Block_HAT)
 - [Waveshare RS485 CAN HAT (B)](https://www.waveshare.com/product/rs485-can-hat-b.htm)
 - [Waveshare Modbus RTU 8CH Analog Output (B)](https://www.waveshare.com/modbus-rtu-analog-output-8ch.htm)
 - [Waveshare Modbus RTU 8CH Analog Input (B)](https://www.waveshare.com/modbus-rtu-analog-input-8ch.htm)
 - WittyC board rev 1.4
 ![WittyC_TestBoard rev 1.4](WittyC_TestBoard-rev14.png)
+
+## Wiring
+
+![WittyC_TestBoard wiring](https://github.com/KobolMan/RS485_CAN_PI_HAT-Modbus-communication/blob/main/Witty_Testboard_Wirings.png))
+
 ## Project Structure
 
 ### Main Scripts
@@ -107,9 +112,6 @@ INFO:root:Voltage Sense (Step 2.3): 0.00V
 INFO:root:OVProtection Test Passed
 ```
 
-## Wiring
-
-![WittyC_TestBoard wiring](https://github.com/KobolMan/RS485_CAN_PI_HAT-Modbus-communication/blob/main/Witty_Testboard_Wirings.png))
 
 ## License
 
