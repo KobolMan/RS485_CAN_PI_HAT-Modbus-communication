@@ -137,6 +137,18 @@ class TestDisplay:
         self.lcd.write("Press the button", 0)
         self.lcd.write("to start", 1)
     
+    def blink_success(self):
+        """Blink success message 3 times"""
+        for _ in range(3):
+            self.clear()
+            time.sleep(0.3)  # Off time
+            self.lcd.write("Test complete", 0)
+            self.lcd.write("All passed!", 1)
+            time.sleep(0.5)  # On time
+        # Leave message on after blinking
+        self.lcd.write("Test complete", 0)
+        self.lcd.write("All passed!", 1)
+    
     def show_test_status(self, status):
         """Show test status with better visibility"""
         self.clear()
@@ -150,8 +162,7 @@ class TestDisplay:
             self.lcd.write("Flashing", 0)
             self.lcd.write("Please wait...", 1)
         elif status == "done":
-            self.lcd.write("Test complete", 0)
-            self.lcd.write("All passed!", 1)
+            self.blink_success()  # Use blinking effect for success
         elif status == "erasing":
             self.lcd.write("Erasing flash", 0)
             self.lcd.write("Please wait...", 1)
