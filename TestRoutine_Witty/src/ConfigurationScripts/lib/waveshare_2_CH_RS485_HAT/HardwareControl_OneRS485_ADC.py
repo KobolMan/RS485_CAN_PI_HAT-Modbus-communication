@@ -12,7 +12,7 @@ libdir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__)
 if os.path.exists(libdir):
     sys.path.append(libdir)
 
-from waveshare_2_CH_RS485_HAT import config
+import config
 
 class RS485Device:
     def __init__(self, port, baudrate=9600, txden_pin=None):
@@ -94,7 +94,7 @@ class AnalogInput:
     def read_voltage(self, channel):
         """Read voltage from the specified channel."""
         # Read input register starting at channel address
-        register_address = channel - 1  # Channels are 0-indexed in registers
+        register_address =  channel - 1  # Channels are 0-indexed in registers
         high_addr = (register_address >> 8) & 0xFF
         low_addr = register_address & 0xFF
 

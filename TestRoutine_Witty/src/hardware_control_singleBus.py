@@ -41,14 +41,14 @@ class RS485Base:
     def send_command(self, command: bytes) -> Optional[bytearray]:
         try:
             GPIO.output(self.txden_pin, GPIO.LOW)
-            time.sleep(0.01)
+            time.sleep(0.1)
             
             self.ser.write(command)
             logger.debug(f"Sent: {' '.join(f'{b:02X}' for b in command)}")
             
-            time.sleep(0.01)
+            time.sleep(0.1)
             GPIO.output(self.txden_pin, GPIO.HIGH)
-            time.sleep(0.05)
+            time.sleep(0.3)
             
             response = bytearray()
             timeout = time.time() + 0.1
@@ -85,7 +85,6 @@ class RS485Base:
 
     def close(self) -> None:
         self.ser.close()
-        GPIO.cleanup()
         logger.info("Closed RS485 device")
 
 class DACController:
@@ -156,7 +155,7 @@ class ADCController:
         return self.rs485.send_command(bytes(command))
     
     def read_voltage(self, channel: int) -> Optional[float]:
-        register_address = channel - 1
+        register_address = (channel - 1)  
         high_addr = (register_address >> 8) & 0xFF
         low_addr = register_address & 0xFF
         
