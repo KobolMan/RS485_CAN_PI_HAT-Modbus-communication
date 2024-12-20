@@ -1,86 +1,68 @@
 #!/usr/bin/python
-import logging
-from hardware_control import RS485Device
+# -*- coding:utf-8 -*-
+
 import time
+import logging
+from hardware_control_singleBus import RS485Base
 
 # Setup logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
+logger = logging.getLogger(__name__)
 
-# Device type definitions
-DEVICE_TYPES = {
-    0x04: "Analog Input Module",
-    0x06: "Analog Output Module"
-}
-
-def interpret_response(addr, func_code, response):
-    """Interpret the response from a device"""
-    if not response:
-        return None
+class DeviceScanner:
+    def __init__(self, port="/dev/ttySC0", baudrate=9600, txden_pin=27):
+        self.rs485 = RS485Base(port, baudrate, txden_pin)
         
-    logging.info(f"Response from 0x{addr:02X}: {' '.join([f'{b:02X}' for b in response])}")
-    
-    # Check if it's an exception response
-    if response[1] & 0x80:
-        logging.warning(f"Exception response from device 0x{addr:02X}: {response[2]}")
-        return None
+    def scan_devices(self, start_addr=1, end_addr=20):
+        """Scan for devices in address range"""
+        found_devices = []
         
-    # Try to identify device type
-    if func_code == 0x03:  # Read Holding Registers
-        if len(response) >= 5:
-            device_type = response[3] << 8 | response[4]
-            return DEVICE_TYPES.get(device_type, "Unknown device type")
-    
-    return "Unknown response format"
-
-def scan_devices():
-    dev = RS485Device()
-    found_devices = {}
-    
-    # Test addresses 1-10
-    for addr in range(1, 11):
-        # Test different function codes
-        function_codes = [
-            (0x04, "Read Input Registers"),
-            (0x03, "Read Holding Registers"),
-            (0x06, "Write Single Register")
-        ]
-        
-        for func_code, desc in function_codes:
-            frame = [
-                addr,
-                func_code,
-                0x00, 0x00,  # Starting address
-                0x00, 0x01   # Number of registers/Value
+        for addr in range(start_addr, end_addr + 1):
+            logger.info(f"\nScanning address {addr}")
+            
+            # Function code 0x04 (Read Input Registers)
+            command = [
+                addr,           # Slave address
+                0x04,          # Function code
+                0x00, 0x00,    # Start register
+                0x00, 0x01     # Number of registers
             ]
             
-            crc = dev.calculate_crc(frame)
-            frame.extend([crc & 0xFF, (crc >> 8) & 0xFF])
+            # Add CRC
+            crc = self.rs485.calculate_crc(command)
+            command.extend([crc & 0xFF, (crc >> 8) & 0xFF])
             
-            logging.info(f"Testing address 0x{addr:02X} with {desc} (0x{func_code:02X})")
-            response = dev.send_command(addr, frame)
+            # Send command
+            response = self.rs485.send_command(bytes(command))
             
             if response:
-                device_type = interpret_response(addr, func_code, response)
-                if device_type:
-                    found_devices[addr] = device_type
-                time.sleep(0.2)
-    
-    # Summary
-    if found_devices:
-        logging.info("\nFound devices:")
-        for addr, device_type in found_devices.items():
-            logging.info(f"Address 0x{addr:02X}: {device_type}")
-    else:
-        logging.info("\nNo devices found")
+                found_devices.append(addr)
+                
+        return found_devices
+        
+    def close(self):
+        """Close RS485 connection"""
+        self.rs485.close()
+
+def main():
+    try:
+        scanner = DeviceScanner()
+        logger.info("Starting RS485 Modbus scan...")
+        
+        # Scan for devices
+        found_devices = scanner.scan_devices()
+        
+        # Report results
+        logger.info(f"\nFound devices at addresses: {found_devices}")
+        
+    except Exception as e:
+        logger.error(f"Error during scan: {str(e)}")
+    finally:
+        if 'scanner' in locals():
+            scanner.close()
 
 if __name__ == "__main__":
-    try:
-        scan_devices()
-    except KeyboardInterrupt:
-        logging.info("Scan interrupted by user")
-    except Exception as e:
-        logging.error(f"Error during scan: {e}")
-        raise
+    main()
