@@ -151,7 +151,7 @@ class TestDisplay:
         self.clear()
         self.lcd.write("Powered by", 0)
         self.lcd.write("Faradex", 1)
-        time.sleep(1)  # Show for 1 second
+        time.sleep(5)  # Show for 1 second
         self.show_ready()
     
     def show_ready(self):
