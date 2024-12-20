@@ -121,10 +121,11 @@ class TestDisplay:
     
     def clear(self):
         self.lcd.clear()
+        time.sleep(0.1)  # Add small delay after clearing
     
     def show_startup(self):
         """Show initial startup message"""
-        self.lcd.clear()
+        self.clear()
         self.lcd.write("Powered by", 0)
         self.lcd.write("Faradex", 1)
         time.sleep(1)  # Show for 1 second
@@ -132,21 +133,31 @@ class TestDisplay:
     
     def show_ready(self):
         """Show ready message"""
-        self.lcd.clear()
+        self.clear()
         self.lcd.write("Press the button", 0)
         self.lcd.write("to start", 1)
     
     def show_test_status(self, status):
         """Show test status"""
-        self.lcd.clear()
+        self.clear()
         if status == "pass":
             self.lcd.write("Test passed", 0)
+            self.lcd.write("Flashing...", 1)
         elif status == "fail":
-            self.lcd.write("Test failed", 0)
+            self.lcd.write("Test failed!", 0)
+            self.lcd.write("Check logs", 1)
         elif status == "flash":
             self.lcd.write("Flashing", 0)
+            self.lcd.write("Please wait...", 1)
         elif status == "done":
-            self.lcd.write("Done", 0)
+            self.lcd.write("Test complete", 0)
+            self.lcd.write("All passed!", 1)
+        elif status == "erasing":
+            self.lcd.write("Erasing flash", 0)
+            self.lcd.write("Please wait...", 1)
+        elif status == "testing":
+            self.lcd.write("Testing", 0)
+            self.lcd.write("Please wait...", 1)
 
 def run_flash_script():
     """Execute the flash-wittyc.sh script"""
@@ -370,22 +381,72 @@ def run_test_sequence(hw_control):
         status = "PASSED" if all_tests_passed else "FAILED"
         logger.info(f"Test sequence completed - {status}")
 
+def run_erase_script(hw_control):
+    """Execute the flash erase script"""
+    try:
+        logger.info("Starting flash erase process...")
+        display.show_test_status("erasing")
+        
+        # Power up STM32
+        logger.info("Powering up STM32...")
+        hw_control.dac.set_voltage(1, 3000)  # Turn on DAC1 (12V LDO enable)
+        time.sleep(0.5)  # Wait for power stabilization
+        
+        # Run erase script
+        result = subprocess.run(['/usr/local/bin/erase-wittyc.sh'], 
+                              check=True,
+                              stdout=subprocess.PIPE,
+                              stderr=subprocess.PIPE,
+                              text=True)
+        
+        if result.returncode == 0:
+            logger.info("Flash erase completed successfully")
+            return True
+        else:
+            logger.error(f"Flash erase failed with error: {result.stderr}")
+            return False
+            
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Flash erase failed with error: {e.stderr}")
+        return False
+    except Exception as e:
+        logger.error(f"Failed to execute erase script: {str(e)}")
+        return False
+
 def button_callback(channel):
     """Interrupt handler for button press"""
     if GPIO.input(BUTTON_PIN) == GPIO.LOW:  # Button pressed
         logger.info("Button pressed - initiating test sequence")
-        display.show_test_status("Initiating test sequence")
-        time.sleep(.15)  # Wait for display update
+        display.lcd.clear()  # Clear the display first
+        display.lcd.write("Testing...", 0)  # Show testing message
+        time.sleep(0.2)  # Give display time to update
+        
         try:
+            # Initialize hardware control first
             hw_control = HardwareControl(
                 port="/dev/ttySC0",
                 baudrate=9600,
                 txden_pin=27
             )
+            
+            # First run the erase script with powered up STM32
+            if not run_erase_script(hw_control):
+                logger.error("Flash erase failed - stopping test sequence")
+                display.show_test_status("fail")
+                return
+
+            # Update display to show testing status
+            display.lcd.clear()
+            display.lcd.write("Testing...", 0)
+            time.sleep(0.2)  # Give display time to update
+            
+            # Then proceed with the regular test sequence
             run_test_sequence(hw_control)
+            
         except Exception as e:
             logger.error(f"Test error: {str(e)}")
             if display:
+                display.clear()  # Clear before showing fail message
                 display.show_test_status("fail")
         finally:
             if 'hw_control' in locals():
