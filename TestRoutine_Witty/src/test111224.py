@@ -21,7 +21,7 @@ def main():
         
         # Set DAC channel 1 to 3000mV (3V)
         logger.info("Setting DAC1 to 0V...")
-        dac.set_voltage(channel=1, voltage_mv=0)
+        dac.set_voltage(channel=2, voltage_mv=0)
         
     except Exception as e:
         logger.error(f"Error: {str(e)}")

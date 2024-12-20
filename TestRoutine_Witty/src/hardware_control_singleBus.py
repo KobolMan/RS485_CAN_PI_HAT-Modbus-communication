@@ -41,23 +41,23 @@ class RS485Base:
     def send_command(self, command: bytes) -> Optional[bytearray]:
         try:
             GPIO.output(self.txden_pin, GPIO.LOW)
-            time.sleep(0.1)
+            time.sleep(0.02)  # Reduced from 0.1s to 20ms
             
             self.ser.write(command)
             logger.debug(f"Sent: {' '.join(f'{b:02X}' for b in command)}")
             
-            time.sleep(0.1)
+            time.sleep(0.02)  # Reduced from 0.1s to 20ms
             GPIO.output(self.txden_pin, GPIO.HIGH)
-            time.sleep(0.3)
+            time.sleep(0.05)  # Reduced from 0.3s to 50ms
             
             response = bytearray()
-            timeout = time.time() + 0.1
+            timeout = time.time() + 0.05  # Reduced from 0.1s to 50ms
             
             while time.time() < timeout:
                 if self.ser.in_waiting:
                     response.extend(self.ser.read(self.ser.in_waiting))
                     break
-                time.sleep(0.005)
+                time.sleep(0.001)  # Reduced from 0.005s
             
             if response:
                 logger.debug(f"Received: {' '.join(f'{b:02X}' for b in response)}")

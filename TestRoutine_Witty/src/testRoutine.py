@@ -121,7 +121,7 @@ class TestDisplay:
     
     def clear(self):
         self.lcd.clear()
-        time.sleep(0.1)  # Add small delay after clearing
+        time.sleep(0.1)  # Kept small delay after clearing for display stability
     
     def show_startup(self):
         """Show initial startup message"""
@@ -138,7 +138,7 @@ class TestDisplay:
         self.lcd.write("to start", 1)
     
     def show_test_status(self, status):
-        """Show test status"""
+        """Show test status with better visibility"""
         self.clear()
         if status == "pass":
             self.lcd.write("Test passed", 0)
@@ -210,7 +210,7 @@ def voltage_sense_test(hw_control):
     # Step 2.1: Initial voltage sense - expecting ~0V
     #if CHG_EN is OFF
     hw_control.dac.set_voltage(3, 0)  # DAC_3 OFF (CHG_EN)
-    #time.sleep(0.1)
+    time.sleep(0.5)
     logger.info("Step 2.1: Initial voltage sense check")
     voltage = hw_control.adc.read_voltage(2)  # ADC_2
     if voltage is None or voltage > 0.1:  # Pass if voltage is close to 0V
@@ -221,7 +221,7 @@ def voltage_sense_test(hw_control):
     # Step 2.2: CHG_EN
     logger.info("Step 2.2: CHG_EN voltage sense check")
     hw_control.dac.set_voltage(3, 3300)  # DAC_3 ON (CHG_EN) 
-    #time.sleep(0.1)
+    time.sleep(0.5)
     voltage = hw_control.adc.read_voltage(2)  # ADC_2
     if voltage is None or not (1.6 <= voltage <= 1.9):  #Ideally should be around 1.8V
         logger.error("Step 2.2 Failed")
@@ -232,7 +232,7 @@ def voltage_sense_test(hw_control):
     logger.info("Step 2.3: OV Protection check")
     hw_control.dac.set_voltage(1, 0)     # DAC_1 OFF (LDO)
     hw_control.dac.set_voltage(7, 3300)  # DAC_7 ON (PS)
-    #time.sleep(0.1)
+    time.sleep(0.5)
     voltage = hw_control.adc.read_voltage(2)  # ADC_2
     if voltage is None or voltage > 0.1:
         logger.error("Step 2.3 Failed")
@@ -249,10 +249,11 @@ def oc_protection_test(hw_control):
     logger.info("Step 3: OC Protection Test")
     
     hw_control.dac.set_voltage(2, 3300)  # DAC_2 ON (MOSFET)
-    time.sleep(0.1)  # Quick check
+    time.sleep(0.3)  # Quick check
     voltage = hw_control.adc.read_voltage(3)  # TP_3 (CUR_S)
-    current = (voltage)/(0.01*50)
     hw_control.dac.set_voltage(2, 0)     # DAC_2 OFF (MOSFET)
+    current = (voltage)/(0.01*50)
+    
     
     if current is None or not (0.12 <= current <= 0.15):
         logger.error(f"Current sense: {current:.2f}A - FAIL")
@@ -271,36 +272,31 @@ def v3v_test(hw_control):
     return True
 
 def cc_test(hw_control):
-    """Step 5: CC Test"""
+    """Optimized CC Test"""
     logger.info("Step 5: CC Test")
     
     # CC ON state test
-    hw_control.dac.set_voltage(4, 3300)  # CC_2 (TP_7)
-    hw_control.dac.set_voltage(5, 3300)  # CC_1 (TP_8)
-    time.sleep(0.1)
+    hw_control.dac.set_voltage(4, 3300)
+    hw_control.dac.set_voltage(5, 3300)
+    time.sleep(0.3)  # Minimum stable delay
     
-    cc2_voltage = hw_control.adc.read_voltage(4)  # ADC_4
-    cc1_voltage = hw_control.adc.read_voltage(5)  # ADC_5
+    cc2_voltage = hw_control.adc.read_voltage(4)
+    cc1_voltage = hw_control.adc.read_voltage(5)
     
     if cc1_voltage is None or cc2_voltage is None or \
        not (2.5 <= cc1_voltage <= 3.6) or not (2.5 <= cc2_voltage <= 3.6):
         logger.error("CC ON State Test Failed")
         return False
-    logger.info("CC ON State Test: PASS")
     
     # CC OFF state test
-    hw_control.dac.set_voltage(4, 0)   # CC_2 = 0.5V
-    hw_control.dac.set_voltage(5, 0)   # CC_1 = 0.5V
-    time.sleep(1)
+    hw_control.dac.set_voltage(4, 500)
+    hw_control.dac.set_voltage(5, 500)
+    time.sleep(0.4)  # Reduced but keep enough for discharge
     
     cc2_voltage = hw_control.adc.read_voltage(4)
     cc1_voltage = hw_control.adc.read_voltage(5)
     
-    if cc1_voltage > 0.1 or cc2_voltage > 0.1:
-        logger.error("CC OFF State Test Failed")
-        return False
-    logger.info("CC OFF State Test: PASS")
-    return True
+    return cc1_voltage <= 0.1 and cc2_voltage <= 0.1
 
 def user_button_test(hw_control):
     """Step 6: User Button Test"""
@@ -317,7 +313,6 @@ def run_test_sequence(hw_control):
     global test_in_progress
     
     if test_in_progress:
-        logger.info("Test already in progress")
         return
         
     test_in_progress = True
@@ -325,20 +320,19 @@ def run_test_sequence(hw_control):
     flash_success = False
     
     try:
-        # Power up sequence
-        hw_control.dac.set_voltage(1, 3000)  # DAC_1 ON (12V LDO enable)
-        time.sleep(.1)  # Wait for power stabilization
+        # Power up sequence with minimal delay
+        hw_control.dac.set_voltage(1, 3000)
+        time.sleep(0.03)  # Minimal stable delay
         
-        # Sequential test execution (CC test moved after flash)
+        # Execute tests in optimal sequence to minimize power cycling
         pre_flash_tests = [
             ("Temperature Test", temp_test),
+            ("3.3V Rail Test", v3v_test),  # Moved up since it only reads
+            ("User Button Test", user_button_test),  # Moved up since it only reads
             ("Voltage Sense Test", voltage_sense_test),
-            ("OC Protection Test", oc_protection_test),
-            ("3.3V Rail Test", v3v_test),
-            ("User Button Test", user_button_test)
+            ("OC Protection Test", oc_protection_test)
         ]
         
-        # Execute pre-flash tests
         for test_name, test_func in pre_flash_tests:
             logger.info(f"\nExecuting {test_name}")
             if not test_func(hw_control):
@@ -346,40 +340,32 @@ def run_test_sequence(hw_control):
                 display.show_test_status("fail")
                 all_tests_passed = False
                 return
-            time.sleep(0.05)
         
-        # Run flash process if pre-flash tests passed
         if all_tests_passed:
             display.show_test_status("pass")
-            #time.sleep(1)
-            #display.show_test_status("flash")
             flash_success = run_flash_script()
             if not flash_success:
-                logger.error("Flash process failed")
                 display.show_test_status("fail")
                 all_tests_passed = False
                 return
         
-        # Execute CC test after successful flash
         if flash_success:
             logger.info("\nExecuting CC Test")
-            #Power cycle to reset CC
-            hw_control.dac.set_voltage(1, 0) # DAC_1 OFF
-            time.sleep(.3)
-            hw_control.dac.set_voltage(1, 3000) # DAC_1 ON
+            # Optimized power cycle
+            hw_control.dac.set_voltage(1, 0)
+            time.sleep(0.1)  # Minimum delay for discharge
+            hw_control.dac.set_voltage(1, 3000)
+            time.sleep(0.05)  # Minimum delay for power up
+            
             if not cc_test(hw_control):
-                logger.error("CC Test failed")
                 display.show_test_status("fail")
                 all_tests_passed = False
             else:
                 display.show_test_status("done")
     
     finally:
-        # Safe shutdown
-        hw_control.dac.set_voltage(1, 0)  # DAC_1 OFF
+        hw_control.dac.set_voltage(1, 0)
         test_in_progress = False
-        status = "PASSED" if all_tests_passed else "FAILED"
-        logger.info(f"Test sequence completed - {status}")
 
 def run_erase_script(hw_control):
     """Execute the flash erase script"""
@@ -387,10 +373,10 @@ def run_erase_script(hw_control):
         logger.info("Starting flash erase process...")
         display.show_test_status("erasing")
         
-        # Power up STM32
+        # Power up STM32 - reduced delay
         logger.info("Powering up STM32...")
         hw_control.dac.set_voltage(1, 3000)  # Turn on DAC1 (12V LDO enable)
-        time.sleep(0.5)  # Wait for power stabilization
+        time.sleep(0.2)  # Reduced from 0.5s to 0.2s
         
         # Run erase script
         result = subprocess.run(['/usr/local/bin/erase-wittyc.sh'], 
