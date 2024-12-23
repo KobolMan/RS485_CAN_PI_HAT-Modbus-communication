@@ -113,6 +113,69 @@ INFO:root:OVProtection Test Passed
 ```
 
 
+# Raspberry Pi SD Card Backup Procedure
+
+## Prerequisites
+- Linux system
+- SD card reader
+- PiShrink script downloaded
+- Sufficient disk space
+
+## Step 1: Prepare PiShrink
+Make the script executable:
+```bash
+chmod +x pishrink.sh
+```
+
+## Step 2: Create and Shrink Backup
+There are two methods to create the backup:
+
+### Method 1: Single-step Process
+Create and shrink the backup in one command:
+```bash
+sudo dd if=/dev/sdb bs=4M status=progress | sudo ./pishrink.sh -z - backup.img
+```
+
+### Method 2: Two-step Process
+If Method 1 doesn't work, use these commands:
+
+1. Create the backup:
+```bash
+sudo dd if=/dev/sdb of=raspbian_backup.img bs=4M status=progress
+```
+
+2. Shrink and compress the backup:
+```bash
+sudo ./pishrink.sh -z raspbian_backup.img
+```
+
+## Step 3: Cleanup
+After verifying the backup (if using Method 2):
+```bash
+rm raspbian_backup.img
+```
+
+## Step 4: Safely Eject
+Unmount all partitions:
+```bash
+sudo umount /dev/sdb1
+sudo umount /dev/sdb2
+```
+
+## Restoration Process
+To restore the backup to a new SD card:
+```bash
+gunzip -c raspbian_backup.img.gz | sudo dd bs=4M of=/dev/sdb status=progress
+```
+
+## Important Notes
+- Replace `/dev/sdb` with your actual device name
+- Verify your device name using `lsblk` or `sudo fdisk -l`
+- The compressed backup will have `.gz` extension
+- The process may take significant time depending on card size
+- Always verify device names before running commands to avoid data loss
+- The restored image will automatically expand to fill the new SD card
+
 ## License
 
 MIT License (See LICENSE file for details)
